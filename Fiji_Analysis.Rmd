@@ -12,13 +12,37 @@ library(tidyverse)
 
 ## Fiji Fertility Survey Analysis (Generalised linear models - Poisson)
 
-``` {fetch data}
+``` {r fetch data}
 fijiFile = 'fijiDownload.RData'
 if(!file.exists(fijiFile)){
   download.file(
-      'http://pbrown.ca/teaching/303/data/fiji.RData',
+      'https://github.com/Roderickwqz/Fiji_Fertility_Analysis/blob/master/fiji.RData',
       fijiFile)
 }
 (load(fijiFile))
 
 ```
+
+
+``` {r clean data}
+#Eliminate newly married women and women who don't have literacy status
+fijiSub = fiji[fiji$monthsSinceM > 0 & !is.na(fiji$literacy),]
+```
+
+``` {Establish fijiSub model}
+fijiSub$logYears = log(fijiSub$monthsSinceM/12)
+fijiSub$ageMarried = relevel(fijiSub$ageMarried, '15to18')
+fijiSub$urban = relevel(fijiSub$residence, 'rural')
+
+fijiRes = glm(
+  children ~ offset(logYears) + ageMarried + ethnicity + literacy + urban,
+ family=poisson(link=log), data=fijiSub)
+logRateMat = cbind(est=fijiRes$coef, confint(fijiRes, level=0.99))
+knitr::kable(cbind(
+    summary(fijiRes)$coef, 
+    exp(logRateMat)), 
+  digits=3)
+```
+
+Assumption made: a woman's fertility rate is zero before marriage and constant thereafter until menopause.
+
