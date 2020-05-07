@@ -1,0 +1,24 @@
+---
+title: "Fiji_Fertility"
+author: "Qizheng Wang"
+date: "5/7/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Fiji Fertility Survey Analysis (Generalised linear models - Poisson)
+
+``` {fetch data}
+fijiFile = 'fijiDownload.RData'
+if(!file.exists(fijiFile)){
+  download.file(
+      'http://pbrown.ca/teaching/303/data/fiji.RData',
+      fijiFile)
+}
+(load(fijiFile))
+
+```
