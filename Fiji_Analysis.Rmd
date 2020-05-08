@@ -13,14 +13,9 @@ library(tidyverse)
 ## Fiji Fertility Survey Analysis (Generalised linear models - Poisson)
 
 ``` {r fetch data}
-fijiFile = 'fijiDownload.RData'
-if(!file.exists(fijiFile)){
-  download.file(
-      'https://github.com/Roderickwqz/Fiji_Fertility_Analysis/blob/master/fiji.RData',
-      fijiFile)
-}
-(load(fijiFile))
+setwd("C:/Users/roder/OneDrive/Documents/GitHub/For2020Job/Fiji_Fertility_Analysis")
 
+fijiFile = load("fiji.RData")
 ```
 
 
@@ -29,7 +24,7 @@ if(!file.exists(fijiFile)){
 fijiSub = fiji[fiji$monthsSinceM > 0 & !is.na(fiji$literacy),]
 ```
 
-``` {Establish fijiSub model}
+``` {r Establish fijiSub model}
 fijiSub$logYears = log(fijiSub$monthsSinceM/12)
 fijiSub$ageMarried = relevel(fijiSub$ageMarried, '15to18')
 fijiSub$urban = relevel(fijiSub$residence, 'rural')
@@ -38,11 +33,41 @@ fijiRes = glm(
   children ~ offset(logYears) + ageMarried + ethnicity + literacy + urban,
  family=poisson(link=log), data=fijiSub)
 logRateMat = cbind(est=fijiRes$coef, confint(fijiRes, level=0.99))
+
 knitr::kable(cbind(
     summary(fijiRes)$coef, 
     exp(logRateMat)), 
   digits=3)
 ```
 
-Assumption made: a woman's fertility rate is zero before marriage and constant thereafter until menopause.
+Assumption made: a woman's fertility rate is zero before marriage and constant thereafter until menopause.\newline
+
+fijiRes1 Model:
+$$\log(\text{number of children}_i) = \boldsymbol{X_i\beta} + \log(\text{years married}_i)$$
+It's a Generalised linear model using poisson regression. Response is number of children had per year. Link function is a log link.
+Offset is log(year married). Covariate are age married, ethinicity, literate, and urban.\newline
+
+By oberserving the summary table, there are some really big p-value, I want to further analyse these covariate, thus I created another model fijiRes2:
+``` {r fijiRes2 Model}
+fijiSub$marriedEarly = fijiSub$ageMarried == '0to15'
+fijiRes2 = glm(
+  children ~ offset(logYears) + marriedEarly + ethnicity +  urban,
+ family=poisson(link=log), data=fijiSub)
+logRateMat2 = cbind(est=fijiRes2$coef, confint(fijiRes2, level=0.99))
+
+knitr::kable(cbind(
+    summary(fijiRes2)$coef, 
+    exp(logRateMat2)), 
+  digits=3)
+lmtest::lrtest(fijiRes2, fijiRes)
+```
+
+Then use likelihood ratio test to test which model is preferable.
+``` {r likelihood ratio test}
+lmtest::lrtest(fijiRes2, fijiRes)
+```
+Since fijiRes2 is nested with fijiRes 2, the comparison is valid. The constraints on the vector of regression coefficients, $\beta$, would be that literacy would have $\beta=0$ as it is not included in the model, and the levels of age married, other than 0to15 would be constrained to all have the same $\beta$ as marriedEarly collapses all of these into one level. I.e., $\beta_{15to18} = \beta_{18to22} = \ldots = \beta_{30toInf}$\newline
+The p-value is bigger than 0.05, thus the literay isn't helping for explaining the data significantly. Thus we can assume that for high possibility, the increase in education is not significantly related to children had per year.\newline
+From the summary of fijiRes, we can see a series of large p-value for levels of age married, thus a delated marriage is not significant with child birth either.\newline
+But howev by examing married early varialbe in fijiRes2.
 
